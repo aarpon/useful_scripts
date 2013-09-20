@@ -8,18 +8,25 @@ import datetime
 
 __VERSION__ = "0.1.0"
 
-class Walker(object):
-    """Walker scans a directory tree recursively for all files and folders that
-have not been accessed for a user-defined time.
+class CleanDirTree(object):
+    """CleanDirTree scans a directory tree recursively for all files and
+folders that have not been accessed for a user-defined time.
 
-The found files are logged and optionally deleted. Empty folders that have not
-been accessed are deleted; if a folder contains an empty subfolder, only the 
-contained subfolder is deleted. The parent will be deleted in the next run.
+The found files are optionally logged and optionally deleted. Empty folders
+that have not been accessed are deleted; if a folder contains an empty 
+subfolder, only the contained subfolder is deleted. The parent will be deleted 
+in the next run.
 
 :param path: full path to the folder to be scanned
 :type path : string
 :param days: number of days without access for a file to be deleted
 :type days : int
+:param log_file: (optional) log file name with full path. If not specified, 
+actions will not be logged.
+:type log_file : string
+:param dry_run: (optional, default True) if True, files will be checked but not
+deleted. 
+:type dry_run: Boolean
 
 *Copyright Aaron Ponti, 2013.*
 
@@ -28,12 +35,15 @@ contained subfolder is deleted. The parent will be deleted in the next run.
     # Path to be scanned
     _path = ""
     
-    # List of files to be deleted with full path
-    _filesToDelete = []
-    
-    # List of empty folders to be deleted with full path
-    _emptyDirsToDelete = []
-    
+    # Log file name
+    _logFile = ""
+
+    # Log file handles
+    _logFileHandle = None
+
+    # Dry run
+    _dryRun = True
+
     # Current time in seconds
     _currentTime = 0
     
@@ -43,14 +53,26 @@ contained subfolder is deleted. The parent will be deleted in the next run.
     # Constant
     _SECONDS_PER_DAY = 24 * 60 * 60
 
+    # Counters
+    _nFilesDeleted = 0
+    _nDirsDeleted = 0
 
-    def __init__(self, path, days):
+
+    def __init__(self, path, days, log_file="", dry_run=True):
         """Constructor.
     
 :param path: full path to the folder to be scanned
 :type path : string
 :param days: number of days without access for a file to be deleted
 :type days : int
+:param log_file: (optional) log file name with full path. If not specified, 
+actions will not be logged.
+:type log_file : string
+:param dry_run: (optional, default True) if True, files will be checked but not
+deleted. 
+:type dry_run: Boolean
+
+Please mind that if both log_file and dry_run are omitted, nothing will be done.
     """
                 
         # Check that 'path' points to an existing directory
@@ -68,37 +90,114 @@ contained subfolder is deleted. The parent will be deleted in the next run.
                              "or equal to 0.")
             sys.exit(1)
 
+        # Log file
+        self._logFile = log_file
+
+        # Dry run flag
+        self._dryRun = dry_run
+
         # Calculate days since last access in s
         self._timeThreshold = days * self._SECONDS_PER_DAY
 
         # Store current time in s
-        self._currentTime = int(round(time.time()))
+        self._currentTime = time.time()
 
+    def __del__(self):
+        '''Destructor.'''
+        
+        if self._logFileHandle is not None:
+            self._logFileHandle.close()
+            self._logFileHandle = None
 
-    def scan(self):
-        """Scans the (stored) path."""
-    
-        # Scan
-        os.path.walk(path, self._processDir, None)
+        
+    def run(self):
+        """Scans and (optionally) cleans the specified path."""
+
+        # Is there something to do?
+        if self._logFile == "" and self._dryRun == True:
+            sys.stdout.write("Nothing to do. Please set the log file or " \
+                             "remove --dry-run.")
+            sys.exit(0)
+
+        # Open log file
+        if self._logFile != "":
+            
+            # Open the file
+            try:
+                self._logFileHandle = open(self._logFile, 'a')
+            except:
+                sys.stderr.write("Could not open log file " + self._logFile)
+                sys.exit(1)
+
+            # Write the header
+            runStr = "run"
+            if self._dryRun == True:
+                runStr = "dry run"
+
+            self._logFileHandle.write("\n* * * CleanDirTree: [" + \
+                    self._path + "], " + runStr + " on " + \
+                    datetime.datetime.now().strftime("%B %d, %Y, %H:%M:%S") + \
+                    "\n\n")
+
+        else:
+            
+            self._logFileHandle = None
+
+        # Process the path recursively
+        os.path.walk(self._path, self._processDir, None)
+
+        # Write footer and close the file
+        if self._logFileHandle is not None:
+            
+            # Write the header
+            fileStr = "files"
+            if self._nFilesDeleted == 1:
+                fileStr = "file"
+            
+            dirStr = "directories"
+            if self._nDirsDeleted == 1:
+                dirStr = "directory"
+
+            self._logFileHandle.write("\nDeleted " + \
+                    str(self._nFilesDeleted) + " " + fileStr + " and " + \
+                    str(self._nDirsDeleted) + " " + dirStr + ".\n\n")
+            
+            # Close the file
+            self._logFileHandle.close()
+            self._logFileHandle = None
 
 
     def _processDir(self, args, dirname, filenames):
         """Private callback for os.path.walk()."""
         
         # If the directory is empty, we check whether it hasn't been accessed
-        # in more than the given time threshold. If it is the case, we add it
-        # to the list of empty folders to delete 
+        # in more than the given time threshold. If it is the case, we delete it. 
         if len(filenames) == 0:
             
             # Get and check last access time
             atime = os.stat(dirname).st_atime
             dTime = self._currentTime - atime
             if (dTime) > self._timeThreshold:
-                self._emptyDirsToDelete.append(dirname)
+                
+                # Log?
+                if self._logFileHandle is not None:
+                    self._logFileHandle.write("[DIR]   " + dirname + \
+                        " (last access on " + time.ctime(atime) + \
+                        ") " + os.linesep)
+
+                # Delete?
+                if not self._dryRun:
+                    try:
+                        os.rmdir(dirname)
+                        self._nDirsDeleted += 1
+                    except:
+                        self._logFileHandle.write("[ERROR] Could not " + \
+                            "delete directory " + dirname + os.linesep) 
+                                    
             return
 
         # Check all the files in the directory for access time. We skip
-        # subdirectories. They will be processed in the code block above
+        # sub-directories. They will be processed in the code block above
         # if they are empty. If they are not, they will eventually be. 
         for filename in filenames:
             fullfile = os.path.join(dirname,filename)
@@ -107,65 +206,25 @@ contained subfolder is deleted. The parent will be deleted in the next run.
             atime = os.stat(fullfile).st_atime
             
             # If the file has not been accessed for more than the
-            # given time threshold, we add it to the list of files to
-            # be deleted
+            # given time threshold, we can delete it (provided we are not
+            # in a dry run)
             dTime = self._currentTime - atime
             if (dTime) > self._timeThreshold:
-                self._filesToDelete.append(fullfile)
+                
+                # Log?
+                if self._logFileHandle is not None:
+                    self._logFileHandle.write("[FILE]  " + fullfile + \
+                        " (last access on " + time.ctime(atime) + \
+                        ") " + os.linesep)
 
-
-    # Delete the files
-    def delete(self):
-        """Delete the files and folders found during the scan."""
-
-        # Delete files
-        for current in self._filesToDelete:
-            os.remove(current)
-        
-        # Delete (empty) directories
-        for current in self._emptyDirsToDelete:
-            os.rmdir(current)
-
-
-    def log(self, log_file):
-        """Log the result of the scan to file.
-        
-:param log_file: full path to the log file
-:type path : string
-
-        """
-
-        
-        try:
-
-            # Open the file (in 'append' mode)
-            f = open(log_file, 'a')
-
-            # Write the header
-            f.write("\n* * * CleanDirTree run - " + \
-                    datetime.datetime.now().strftime("%B %d, %Y, %H:%M:%S") + \
-                    "\n\n")
-
-            # Write the list of files and empty folder found
-            nFiles = len(self._filesToDelete)
-            nDirs  = len(self._emptyDirsToDelete)
-            if nFiles == 0 and nDirs == 0:
-                f.write("Nothing to delete.\n")
-            else:
-                if nDirs > 0:
-                    f.write("\n=== Directories:\n")
-                    for current in self._emptyDirsToDelete:
-                        f.write(current + os.linesep)                    
-                if nFiles > 0:
-                    f.write("\n=== Files:\n")
-                    for current in self._filesToDelete:
-                        f.write(current + os.linesep)
-
-            # Close the file
-            f.close()
-
-        except:
-            sys.stderr.write("Error: could not write to file " + log_file + "!")
+                # Delete?
+                if not self._dryRun:
+                    try:
+                        os.remove(fullfile)
+                        self._nFilesDeleted += 1
+                    except:
+                        self._logFileHandle.write("[ERROR] Could not " + \
+                            "delete file " + fullfile + os.linesep)
 
 
 # === Program entry point ===
@@ -174,36 +233,16 @@ if __name__ == "__main__":
 
     # Argument parser
     parser = argparse.ArgumentParser(description='CleanDirTree ' + __VERSION__)
-    parser.add_argument('path', nargs=1,
-                   help='full path to directory to be scanned')
-    parser.add_argument('days', type=int, nargs=1,
+    parser.add_argument('path', help='full path to directory to be scanned')
+    parser.add_argument('days', type=int,
                    help='number of days without access for a file " \
                    "or an empty folder to be deleted')
-    parser.add_argument('log_file', nargs=1,
-                   help='log file with full path')    
+    parser.add_argument('log_file', default="",
+                   help='log file with full path')
     parser.add_argument('--dry-run', dest='dry_run', action='store_true',
                    help='do not delete, log only')
     args = parser.parse_args()
 
-    # Get the path
-    path = args.path[0]
-    
-    # Get the days
-    days = args.days[0]
-    
-    # Get the log file
-    log_file = args.log_file[0]
-
-    # Get the dry-run flag
-    dry_run = args.dry_run
-
-    # Instantiate the Crawler and process
-    walker = Walker(path, days)
-    walker.scan()
-    
-    # Delete if requested
-    if dry_run == False:
-        walker.delete()
-
-    # Log
-    walker.log(log_file)
+    # Instantiate the CleanDirTree object and process the folder
+    cleanDirTree = CleanDirTree(args.path, args.days, args.log_file, args.dry_run)
+    cleanDirTree.run()
