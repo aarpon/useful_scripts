@@ -41,6 +41,9 @@ deleted.
     # Log file handles
     _logFileHandle = None
 
+    # Excluded subdirectories
+    _exclude_dirs = None
+
     # Dry run
     _dryRun = True
 
@@ -58,7 +61,8 @@ deleted.
     _nDirsDeleted = 0
 
 
-    def __init__(self, path, days, log_file="", dry_run=True):
+    def __init__(self, path, days, log_file="", \
+                 exclude_dirs = None, dry_run=True):
         """Constructor.
     
 :param path: full path to the folder to be scanned
@@ -92,6 +96,18 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
 
         # Log file
         self._logFile = log_file
+
+        # Exclude dirs
+        self._exclude_dirs = exclude_dirs
+        if self._exclude_dirs is not None:
+            for i in range(len(self._exclude_dirs)):
+                if os.path.isabs(self._exclude_dirs[i]):
+                    sys.stderr.write("Excluded sub-directories must " \
+                                     "be relative paths!")
+                    sys.exit(1)
+                else:
+                    self._exclude_dirs[i] = os.path.join(path, \
+                                                         self._exclude_dirs[i])
 
         # Dry run flag
         self._dryRun = dry_run
@@ -170,6 +186,10 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
     def _processDir(self, args, dirname, filenames):
         """Private callback for os.path.walk()."""
         
+        if dirname in self._exclude_dirs:
+            self._logFileHandle.write("[EXCLUDED] " + dirname + os.linesep)
+            return
+
         # If the directory is empty, we check whether it hasn't been accessed
         # in more than the given time threshold. If it is the case, we delete it. 
         if len(filenames) == 0:
@@ -181,7 +201,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                 
                 # Log?
                 if self._logFileHandle is not None:
-                    self._logFileHandle.write("[DIR]   " + dirname + \
+                    self._logFileHandle.write("[DIR]      " + dirname + \
                         " (last access on " + time.ctime(atime) + \
                         ") " + os.linesep)
 
@@ -191,7 +211,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                         os.rmdir(dirname)
                         self._nDirsDeleted += 1
                     except:
-                        self._logFileHandle.write("[ERROR] Could not " + \
+                        self._logFileHandle.write("[ERROR]    Could not " + \
                             "delete directory " + dirname + os.linesep) 
                                     
             return
@@ -213,7 +233,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                 
                 # Log?
                 if self._logFileHandle is not None:
-                    self._logFileHandle.write("[FILE]  " + fullfile + \
+                    self._logFileHandle.write("[FILE]     " + fullfile + \
                         " (last access on " + time.ctime(atime) + \
                         ") " + os.linesep)
 
@@ -223,7 +243,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                         os.remove(fullfile)
                         self._nFilesDeleted += 1
                     except:
-                        self._logFileHandle.write("[ERROR] Could not " + \
+                        self._logFileHandle.write("[ERROR]    Could not " + \
                             "delete file " + fullfile + os.linesep)
 
 
@@ -239,10 +259,14 @@ if __name__ == "__main__":
                    "or an empty folder to be deleted')
     parser.add_argument('log_file', default="",
                    help='log file with full path')
+    parser.add_argument('--exclude-dirs', dest='exclude_dirs', nargs = "*",
+                   help='optional list of sub-directories (relative path) ' \
+                   'to ignore.')
     parser.add_argument('--dry-run', dest='dry_run', action='store_true',
                    help='do not delete, log only')
     args = parser.parse_args()
 
     # Instantiate the CleanDirTree object and process the folder
-    cleanDirTree = CleanDirTree(args.path, args.days, args.log_file, args.dry_run)
+    cleanDirTree = CleanDirTree(args.path, args.days, args.log_file, \
+                                args.exclude_dirs, args.dry_run)
     cleanDirTree.run()
