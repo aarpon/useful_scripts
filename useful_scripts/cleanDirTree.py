@@ -6,7 +6,7 @@ import time
 import argparse
 import datetime
 
-__VERSION__ = "0.1.0"
+__VERSION__ = "0.2.0"
 
 class CleanDirTree(object):
     """CleanDirTree scans a directory tree recursively for all files and
