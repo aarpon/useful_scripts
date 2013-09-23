@@ -252,11 +252,15 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
 if __name__ == "__main__":
 
     # Argument parser
-    parser = argparse.ArgumentParser(description='CleanDirTree ' + __VERSION__)
-    parser.add_argument('path', help='full path to directory to be scanned')
+    parser = argparse.ArgumentParser(
+         description='Deletes files and folders that have not been ' \
+        'accessed for a user-defined number of days from a ' \
+        'specified location.', \
+        epilog="Copyright, Aaron Christian Ponti, 2013" )
+    parser.add_argument('path', help='full path to directory to be processed')
     parser.add_argument('days', type=int,
-                   help='number of days without access for a file " \
-                   "or an empty folder to be deleted')
+                   help='number of days without access for a file ' \
+                   'or an (empty) folder to be deleted')
     parser.add_argument('log_file', default="",
                    help='log file with full path')
     parser.add_argument('--exclude-dirs', dest='exclude_dirs', nargs = "*",
@@ -264,6 +268,9 @@ if __name__ == "__main__":
                    'to ignore.')
     parser.add_argument('--dry-run', dest='dry_run', action='store_true',
                    help='do not delete, log only')
+    parser.add_argument('-v', '--version', help='show version information', \
+                        action='version',
+                        version='cleanDirTree version ' + __VERSION__)
     args = parser.parse_args()
 
     # Instantiate the CleanDirTree object and process the folder
