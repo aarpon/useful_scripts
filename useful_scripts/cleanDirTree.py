@@ -183,10 +183,29 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
             self._logFileHandle = None
 
 
+    def _isToBeExcluded(self, currDir):
+        '''Check whether currDir is one of the excluded directories or is
+        contained in one.
+        '''
+
+        # Build full path
+        fullPath = os.path.join(self._path, currDir)
+        
+        # Is fullPath one of the excluded dirs or is it contained in one?
+        for exclDir in self._exclude_dirs:
+            if fullPath.find(exclDir) == 0:
+                return True
+            
+        # Not found. Return False
+        return False
+
+
     def _processDir(self, args, dirname, filenames):
         """Private callback for os.path.walk()."""
         
-        if dirname in self._exclude_dirs:
+        # Check whether current dir is one of the excluded directories
+        # or is contained in one
+        if self._isToBeExcluded(dirname):
             self._logFileHandle.write("[EXCLUDED] " + dirname + os.linesep)
             return
 
