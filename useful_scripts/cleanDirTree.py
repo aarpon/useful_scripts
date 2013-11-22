@@ -6,7 +6,7 @@ import time
 import argparse
 import datetime
 
-__VERSION__ = "0.2.0"
+__VERSION__ = "0.1.1"
 
 class CleanDirTree(object):
     """CleanDirTree scans a directory tree recursively for all files and
@@ -84,6 +84,10 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
             sys.stderr.write("Path does not exist.")
             sys.exit(1)
 
+        # Cosmetic change for Windows
+        if os.name == "nt" and len(path) == 2 and path[1] == ":":
+            path = path + "\\"
+
         # Set the path
         self._path = path
 
@@ -154,6 +158,12 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                     self._path + "], " + runStr + " on " + \
                     datetime.datetime.now().strftime("%B %d, %Y, %H:%M:%S") + \
                     "\n\n")
+            
+            if self._exclude_dirs is not None:
+                self._logFileHandle.write("Excluded directories: ")
+                for exclude_dir in self._exclude_dirs:
+                    self._logFileHandle.write("[" + exclude_dir + "] ")
+                self._logFileHandle.write("\n\n")
 
         else:
             
@@ -188,6 +198,10 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
         contained in one.
         '''
 
+        # Are there directories to be excluded?
+        if self._exclude_dirs is None:
+            return False
+        
         # Build full path
         fullPath = os.path.join(self._path, currDir)
         
