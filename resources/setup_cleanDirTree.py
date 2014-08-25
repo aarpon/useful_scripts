@@ -13,7 +13,7 @@ import py2exe
 
 # Create a console executable from dataCompletedScript.py
 setup(name='CleanDirTree',
-      version="0.1.1",
+      version="0.2.0",
       author='Aaron Ponti',
       author_email='aaron.ponti@bsse.ethz.ch',
       console=['useful_scripts/cleanDirTree.py'])
