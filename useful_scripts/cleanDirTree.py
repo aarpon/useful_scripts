@@ -6,7 +6,7 @@ import time
 import argparse
 import datetime
 
-__VERSION__ = "0.1.1"
+__VERSION__ = "0.2.0"
 
 class CleanDirTree(object):
     """CleanDirTree scans a directory tree recursively for all files and
@@ -27,8 +27,11 @@ actions will not be logged.
 :param dry_run: (optional, default True) if True, files will be checked but not
 deleted. 
 :type dry_run: Boolean
+:param verbose: (optional, default False) if False, the script will log with 
+higher verbosity.
+:type verbose: Boolean
 
-*Copyright Aaron Ponti, 2013.*
+*Copyright Aaron Ponti, 2013 - 2014.*
 
     """
 
@@ -41,11 +44,14 @@ deleted.
     # Log file handles
     _logFileHandle = None
 
-    # Excluded subdirectories
+    # Excluded sub-directories
     _exclude_dirs = None
 
     # Dry run
     _dryRun = True
+
+    # Verbose
+    _verbose = False
 
     # Current time in seconds
     _currentTime = 0
@@ -62,7 +68,7 @@ deleted.
 
 
     def __init__(self, path, days, log_file="", \
-                 exclude_dirs = None, dry_run=True):
+                 exclude_dirs = None, dry_run=True, verbose=False):
         """Constructor.
     
 :param path: full path to the folder to be scanned
@@ -75,13 +81,16 @@ actions will not be logged.
 :param dry_run: (optional, default True) if True, files will be checked but not
 deleted. 
 :type dry_run: Boolean
+:param verbose: (optional, default False) if False, the script will log with 
+higher verbosity.
+:type verbose: Boolean
 
 Please mind that if both log_file and dry_run are omitted, nothing will be done.
     """
                 
         # Check that 'path' points to an existing directory
         if not os.path.isdir(path):
-            sys.stderr.write("Path does not exist.")
+            sys.stderr.write("Path does not exist.\n")
             sys.exit(1)
 
         # Cosmetic change for Windows
@@ -95,7 +104,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
         days = int(days)
         if days < 0:
             sys.stderr.write("Please specify a number of days larger than " \
-                             "or equal to 0.")
+                             "or equal to 0.\n")
             sys.exit(1)
 
         # Log file
@@ -107,7 +116,7 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
             for i in range(len(self._exclude_dirs)):
                 if os.path.isabs(self._exclude_dirs[i]):
                     sys.stderr.write("Excluded sub-directories must " \
-                                     "be relative paths!")
+                                     "be relative paths!\n")
                     sys.exit(1)
                 else:
                     self._exclude_dirs[i] = os.path.join(path, \
@@ -115,6 +124,9 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
 
         # Dry run flag
         self._dryRun = dry_run
+
+        # Verbose flag
+        self._verbose = verbose
 
         # Calculate days since last access in s
         self._timeThreshold = days * self._SECONDS_PER_DAY
@@ -134,9 +146,9 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
         """Scans and (optionally) cleans the specified path."""
 
         # Is there something to do?
-        if self._logFile == "" and self._dryRun == True:
+        if self._logFile == "" and self._dryRun:
             sys.stdout.write("Nothing to do. Please set the log file or " \
-                             "remove --dry-run.")
+                             "remove --dry-run.\n")
             sys.exit(0)
 
         # Open log file
@@ -146,12 +158,12 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
             try:
                 self._logFileHandle = open(self._logFile, 'a')
             except:
-                sys.stderr.write("Could not open log file " + self._logFile)
+                sys.stderr.write("Could not open log file " + self._logFile + "\n")
                 sys.exit(1)
 
             # Write the header
             runStr = "run"
-            if self._dryRun == True:
+            if self._dryRun:
                 runStr = "dry run"
 
             self._logFileHandle.write("\n* * * CleanDirTree: [" + \
@@ -160,10 +172,11 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
                     "\n\n")
             
             if self._exclude_dirs is not None:
-                self._logFileHandle.write("Excluded directories: ")
-                for exclude_dir in self._exclude_dirs:
-                    self._logFileHandle.write("[" + exclude_dir + "] ")
-                self._logFileHandle.write("\n\n")
+                if self._verbose:
+                    self._logFileHandle.write("Excluded directories: ")
+                    for exclude_dir in self._exclude_dirs:
+                        self._logFileHandle.write("[" + exclude_dir + "] ")
+                    self._logFileHandle.write("\n\n")
 
         else:
             
@@ -220,7 +233,8 @@ Please mind that if both log_file and dry_run are omitted, nothing will be done.
         # Check whether current dir is one of the excluded directories
         # or is contained in one
         if self._isToBeExcluded(dirname):
-            self._logFileHandle.write("[EXCLUDED] " + dirname + os.linesep)
+            if self._verbose:
+                self._logFileHandle.write("[EXCLUDED] " + dirname + os.linesep)
             return
 
         # If the directory is empty, we check whether it hasn't been accessed
@@ -289,24 +303,26 @@ if __name__ == "__main__":
          description='Deletes files and folders that have not been ' \
         'accessed for a user-defined number of days from a ' \
         'specified location.', \
-        epilog="Copyright, Aaron Christian Ponti, 2013" )
-    parser.add_argument('path', help='full path to directory to be processed')
+        epilog="Copyright, Aaron Christian Ponti, 2013 - 2014" )
+    parser.add_argument('path', help='full path to directory to be processed.')
     parser.add_argument('days', type=int,
                    help='number of days without access for a file ' \
-                   'or an (empty) folder to be deleted')
+                   'or an (empty) folder to be deleted.')
     parser.add_argument('log_file', default="",
-                   help='log file with full path')
+                   help='log file with full path.')
     parser.add_argument('--exclude-dirs', dest='exclude_dirs', nargs = "*",
                    help='optional list of sub-directories (relative path) ' \
                    'to ignore.')
     parser.add_argument('--dry-run', dest='dry_run', action='store_true',
-                   help='do not delete, log only')
+                        help='do not delete, log only.')
+    parser.add_argument('--verbose', dest='verbose', action='store_true',
+                        help='verbose output.')
     parser.add_argument('-v', '--version', help='show version information', \
                         action='version',
-                        version='cleanDirTree version ' + __VERSION__)
+                        version='cleanDirTree version ' + __VERSION__ + '.')
     args = parser.parse_args()
 
     # Instantiate the CleanDirTree object and process the folder
     cleanDirTree = CleanDirTree(args.path, args.days, args.log_file, \
-                                args.exclude_dirs, args.dry_run)
+                                args.exclude_dirs, args.dry_run, args.verbose)
     cleanDirTree.run()
