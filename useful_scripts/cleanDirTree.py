@@ -6,7 +6,7 @@ import time
 import argparse
 import datetime
 
-__VERSION__ = "0.1.1"
+__VERSION__ = "0.2.0"
 
 class CleanDirTree(object):
     """CleanDirTree scans a directory tree recursively for all files and
@@ -27,8 +27,11 @@ actions will not be logged.
 :param dry_run: (optional, default True) if True, files will be checked but not
 deleted. 
 :type dry_run: Boolean
+:param verbose: (optional, default False) if False, the script will log with 
+higher verbosity.
+:type verbose: Boolean
 
-*Copyright Aaron Ponti, 2013.*
+*Copyright Aaron Ponti, 2013 - 2014.*
 
     """
 
@@ -41,7 +44,7 @@ deleted.
     # Log file handles
     _logFileHandle = None
 
-    # Excluded subdirectories
+    # Excluded sub-directories
     _exclude_dirs = None
 
     # Dry run
@@ -78,6 +81,9 @@ actions will not be logged.
 :param dry_run: (optional, default True) if True, files will be checked but not
 deleted. 
 :type dry_run: Boolean
+:param verbose: (optional, default False) if False, the script will log with 
+higher verbosity.
+:type verbose: Boolean
 
 Please mind that if both log_file and dry_run are omitted, nothing will be done.
     """
