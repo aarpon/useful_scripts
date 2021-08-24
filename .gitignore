@@ -1,1 +1,6 @@
 /build/
+/.idea/
+cleanDirTree.build/
+cleanDirTree.dist/
+cleanDirTree.onefile-build/
+__pycache__/
