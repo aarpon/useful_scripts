@@ -1,0 +1,9 @@
+name: useful_scripts
+
+channels:
+  - defaults
+
+dependencies:
+  - python=3.9
+  - nuitka
+  - zstandard

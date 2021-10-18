@@ -4,7 +4,7 @@ import time
 import argparse
 import datetime
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 class CleanDirTree:
@@ -220,21 +220,29 @@ class CleanDirTree:
                 # If the directory is empty, we delete it. Scanning the folders for files changes
                 # the access time, and therefore we will never find a folder that hasn't been accessed
                 # long enough to be deleted.
-                filenames = os.listdir(dir_name)
-                if len(filenames) == 0:
+                try:
+                    filenames = os.listdir(dir_name)
+                    if len(filenames) == 0:
 
+                        # Log?
+                        if self._log_file_handle is not None:
+                            self._log_file_handle.write(f"[DIR]      {dir_name}{os.linesep}")
+
+                        # Delete?
+                        if not self._dry_run:
+                            try:
+                                os.rmdir(dir_name)
+                                self._num_dirs_deleted += 1
+                            except:
+                                self._log_file_handle.write(
+                                    f"[ERROR]    Could not delete directory {dir_name}{os.linesep}")
+
+                except:
+                    # We couldn't even access the folder; skip
                     # Log?
                     if self._log_file_handle is not None:
-                        self._log_file_handle.write(f"[DIR]      {dir_name}{os.linesep}")
-
-                    # Delete?
-                    if not self._dry_run:
-                        try:
-                            os.rmdir(dir_name)
-                            self._num_dirs_deleted += 1
-                        except:
-                            self._log_file_handle.write(
-                                f"[ERROR]    Could not delete directory {dir_name}{os.linesep}")
+                        self._log_file_handle.write(
+                            f"[ERROR]    Could not access directory {dir_name}{os.linesep}")
 
         # Write footer and close the file
         if self._log_file_handle is not None:

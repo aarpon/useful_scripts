@@ -1,5 +1,6 @@
 /build/
 /.idea/
+/.vscode/
 cleanDirTree.build/
 cleanDirTree.dist/
 cleanDirTree.onefile-build/
