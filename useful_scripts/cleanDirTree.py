@@ -3,32 +3,32 @@ import sys
 import time
 import argparse
 import datetime
+from pathlib import Path
 
-__version__ = "0.3.1"
+
+__version__ = "0.3.2"
 
 
 class CleanDirTree:
-    """CleanDirTree scans a directory tree recursively for all files and
-    folders that have not been accessed for a user-defined time.
+    """CleanDirTree scans a directory tree recursively for all files and folders that have not been
+     accessed for a user-defined time.
 
-    The found files are optionally logged and optionally deleted. Empty folders
-    that have not been accessed are deleted; if a folder contains an empty
-    subfolder, only the contained subfolder is deleted. The parent will be deleted
-    in the next run.
+    The found files are optionally logged and optionally deleted. Empty folders that have not been
+    accessed are deleted; if a folder contains an empty subfolder, only the contained subfolder is
+    deleted. The parent will be deleted in the next run.
 
     :param path: full path to the folder to be scanned
     :type path : string
     :param days: number of days without access for a file to be deleted
     :type days : int
-    :param log_file: (optional) log file name with full path. If not specified,
-    actions will not be logged.
+    :param log_file: (optional) log file name with full path. If not specified, actions will not be logged.
     :type log_file : string
-    :param dry_run: (optional, default True) if True, files will be checked but not
-    deleted.
+    :param dry_run: (optional, default True) if True, files will be checked but not deleted.
     :type dry_run: Boolean
-    :param verbose: (optional, default False) if False, the script will log with
-    higher verbosity.
+    :param verbose: (optional, default False) if False, the script will log with higher verbosity.
     :type verbose: Boolean
+
+    Please mind that if both log_file and dry_run are omitted, nothing will be done.
 
     *Copyright Aaron Ponti, 2013 - 2021.*
 
@@ -145,6 +145,14 @@ class CleanDirTree:
 
         # Open log file
         if self._log_file != "":
+
+            # Make sure that the path to the log file exists, otherwise create it
+            log_dir = Path(self._log_file).parent
+            try:
+                log_dir.mkdir(exist_ok=True, parents=True)
+            except:
+                sys.stdout.write(f"Can not create log file in {log_dir}{os.linesep}.")
+                sys.exit(1)
 
             # Open the file
             try:
